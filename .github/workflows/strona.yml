@@ -1,0 +1,30 @@
+name: Strona skanera
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publikuj:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.strona.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pobierz ceny z Cardmarket
+        run: python3 ceny.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: strona
+        uses: actions/deploy-pages@v4
