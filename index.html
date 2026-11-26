@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Skaner Klasera</title>
+<meta name="theme-color" content="#101217">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#101217;--surface:#1A1D25;--sunk:#0B0C10;--line:#2A2E39;--ink:#ECEEF3;--muted:#9AA1B2;--acc:#E8B94A;--acc-ink:#1B1606;--ok:#5BD08A;--warn:#F5C542;--bad:#F07A6A;--r:14px}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+body{min-height:100dvh;display:flex;flex-direction:column;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+header h1{font-size:17px;margin:0;flex:1}
+.badge{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 9px;white-space:nowrap}
+.badge.on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:11px;padding:10px 14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px}
+button.primary,.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:700}
+button.ghost{background:transparent}
+button.icon{min-width:44px;padding:0}
+button:disabled{opacity:.45}
+main{flex:1;display:grid;gap:12px;padding:0 16px;max-width:640px;width:100%;margin:0 auto;align-content:start}
+.cam{position:relative;width:100%;aspect-ratio:3/4;max-height:62dvh;background:#000;border-radius:var(--r);overflow:hidden;margin-inline:auto}
+.cam video{width:100%;height:100%;object-fit:contain;display:block}
+.guide{position:absolute;border:3px solid rgb(255 255 255 / .85);border-radius:14px;box-shadow:0 0 0 100vmax rgb(0 0 0 / .32);pointer-events:none;transition:border-color .2s}
+.guide.hold{border-color:var(--warn)}.guide.go{border-color:var(--ok)}
+.hint{position:absolute;left:0;right:0;bottom:64px;text-align:center;color:#fff;font-weight:700;font-size:15px;text-shadow:0 1px 3px #000;padding:0 14px;pointer-events:none}
+.tools{position:absolute;left:10px;right:10px;bottom:10px;display:flex;justify-content:space-between;gap:8px}
+.tools button{background:rgb(16 18 23 / .72);border-color:rgb(255 255 255 / .18);backdrop-filter:blur(6px)}
+.off{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;padding:24px}
+.off p{margin:0;color:var(--muted);max-width:36ch}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+.flash.go{opacity:.55;transition:none}
+.sum{display:flex;justify-content:space-between;align-items:baseline;gap:10px;color:var(--muted);font-size:14px}
+.sum b{color:var(--ink);font-size:17px}
+.list{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px}
+.row{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row.new{animation:pop .5s}
+@keyframes pop{from{background:color-mix(in srgb,var(--ok) 22%,transparent)}to{background:transparent}}
+.th{width:46px;aspect-ratio:5/7;border-radius:5px;overflow:hidden;background:var(--sunk)}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.nm{font-weight:650;overflow-wrap:anywhere}
+.nm span{font-weight:400;color:var(--muted)}
+.meta{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.price{font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
+.qty{display:flex;align-items:center;gap:4px}
+.qty b{min-width:30px;text-align:center;font-variant-numeric:tabular-nums}
+.qty button{min-height:36px;min-width:36px;padding:0;border-radius:9px}
+.ask{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ask button{min-height:34px;padding:4px 12px;font-size:13.5px}
+.empty{color:var(--muted);text-align:center;padding:18px 8px;margin:0}
+.spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(1turn)}}
+.bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);justify-content:center}
+.bar .primary{flex:1;max-width:460px}
+dialog{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:18px;padding:18px;width:min(520px,calc(100vw - 32px));max-height:calc(100dvh - 40px)}
+dialog::backdrop{background:rgb(0 0 0 / .6)}
+dialog h2{margin:0 0 10px;font-size:18px}
+dialog p,dialog li{color:var(--muted);font-size:14px}
+dialog ol{padding-left:20px;margin:8px 0}
+label.f{display:grid;gap:5px;margin:10px 0;font-size:14px}
+input,select{font:inherit;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+.err{color:var(--bad)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2A2E39;color:var(--ink);padding:10px 14px;border-radius:12px;font-size:14px;box-shadow:0 6px 24px rgb(0 0 0 / .4);max-width:calc(100vw - 32px);z-index:9}
+</style>
+</head>
+<body>
+<header>
+  <h1>Skaner Klasera</h1>
+  <span class="badge" id="mode"></span>
+  <button class="icon ghost" id="opt" aria-label="Ustawienia">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<main>
+  <div class="cam" id="cam">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="guide" id="guide" hidden></div>
+    <div class="flash" id="flash"></div>
+    <div class="hint" id="hint"></div>
+    <div class="tools" id="tools" hidden>
+      <button id="torch" hidden>Latarka</button>
+      <button id="now">Zrób zdjęcie teraz</button>
+      <button id="stop">Zatrzymaj</button>
+    </div>
+    <div class="off" id="off">
+      <button class="primary" id="start">Włącz kamerę</button>
+      <p id="offmsg">Kładź karty po kolei w ramce. Skaner sam zrobi zdjęcie, gdy karta przestanie się ruszać.</p>
+    </div>
+  </div>
+  <div class="sum"><span id="sumL">Sesja jest pusta</span><b id="sumV"></b></div>
+  <div class="list" id="list"></div>
+  <p class="meta" id="pricesAt"></p>
+</main>
+
+<div class="bar">
+  <button class="ghost" id="clear">Nowa sesja</button>
+  <button class="primary" id="send" disabled>Wyślij do Klasera</button>
+</div>
+
+<dialog id="dOpt">
+  <h2>Ustawienia</h2>
+  <p>Bez klucza skaner robi same zdjęcia kart, a rozpozna je Klaser po imporcie. Z kluczem API Anthropic skaner rozpoznaje kartę od razu, liczy sztuki i pokazuje cenę.</p>
+  <label class="f">Klucz API Anthropic (zostaje tylko na tym telefonie)
+    <input id="key" type="password" autocomplete="off" placeholder="sk-ant-…" spellcheck="false"></label>
+  <label class="f">Rozpoznawanie
+    <select id="model"><option value="claude-haiku-5-5">Szybkie i tańsze</option><option value="claude-sonnet-5-5">Dokładniejsze</option></select></label>
+  <label class="f">Gra
+    <select id="game"><option value="auto">Wykrywaj sam</option><option value="lorcana">Disney Lorcana</option><option value="riftbound">Riftbound</option><option value="cyberpunk">Cyberpunk TCG</option></select></label>
+  <label class="f">Link do Klasera
+    <input id="klaser" type="url" spellcheck="false"></label>
+  <p id="keyMsg"></p>
+  <div class="acts"><button id="test">Sprawdź klucz</button><button class="primary" id="save">Zapisz</button></div>
+</dialog>
+
+<dialog id="dSent">
+  <h2>Plik dla Klasera jest gotowy</h2>
+  <p id="sentMsg"></p>
+  <ol>
+    <li>Otwórz Klaser i wejdź w zakładkę <b>Skaner</b>.</li>
+    <li>Stuknij <b>Importuj ze Skanera</b> i wybierz plik <b id="sentFile"></b> z folderu Pobrane.</li>
+    <li>Klaser doda karty, połączy ilości i pobierze ceny z Cardmarket.</li>
+  </ol>
+  <div class="acts"><button id="again">Pobierz plik jeszcze raz</button><a class="btn" id="openK" target="_blank" rel="noopener">Otwórz Klaser</a><button class="primary" id="done">Wyczyść sesję</button></div>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+const nrm=s=>String(s??"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+const GAMES={lorcana:"Lorcana",riftbound:"Riftbound",cyberpunk:"Cyberpunk"};
+const pl=(n,a,b,c)=>n===1?a:n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?b:c;
+const KLASER_DOMYSLNY="https://claude.ai/artifact/6Ta5BNBu67zgy5vhvnG7wm";
+
+/* ---------- ustawienia (tylko na tym urządzeniu) ---------- */
+const OPT={key:"",model:"claude-haiku-5-5",game:"auto",klaser:KLASER_DOMYSLNY};
+try{Object.assign(OPT,JSON.parse(localStorage.getItem("skaner-ust")||"{}"))}catch{}
+const saveOpt=()=>{try{localStorage.setItem("skaner-ust",JSON.stringify(OPT))}catch{}};
+const hasKey=()=>/^sk-ant-/.test(OPT.key||"");
+
+let toastT=0;
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,2600)}
+
+/* ---------- dodatki: kod z karty -> id dodatku na Cardmarket ---------- */
+const SETS={lorcana:[["1","TFC",5434],["2","ROF",5502],["3","ITI",5567],["4","URR",5697],["5","SSK",5792],["6","AZS",5895],["7","ARI",6013],["8","ROJ",6087],["9","FAB",6170],["10","WITW",6339],["11","WSP",6412],["12","WUN",6551],["13","AOV",6586],["14","HYC",6670]],
+  riftbound:[["OGN","OGN",6286],["SFD","SFD",6399],["UNL","UNL",6491],["VEN","VEN",6587],["RAD","RAD",6659]],
+  cyberpunk:[["WTNC","WTNC",6761],["WTNC","WTNCB",6714]]};
+function expIds(c){const s=nrm(c.set),num=String(c.number||"");const code=(num.match(/^([A-Z]{2,5})-/i)||[])[1];
+  return(SETS[c.game]||[]).filter(x=>(s&&(s===nrm(x[0])||s===nrm(x[1])))||(code&&code.toUpperCase()===x[1])).map(x=>x[2])}
+const SPECIAL={lorcana:/enchanted|iconic|epic/i,riftbound:/showcase/i,cyberpunk:/secret|iconic|nova/i};
+
+/* ---------- ceny z Cardmarket (plik ceny.json budowany codziennie na GitHubie) ---------- */
+let PR=null;
+async function loadPrices(){try{const r=await fetch("ceny.json",{cache:"no-cache"});if(!r.ok)throw 0;const j=await r.json();
+    for(const g in j.g)for(const x of j.g[g])x.push(nrm(x[0]));PR=j;
+    $("#pricesAt").textContent="Ceny: trend Cardmarket z "+new Date(j.at).toLocaleDateString("pl-PL")+". Dokładne ceny policzy Klaser po imporcie.";
+    for(const it of S.items)it.price=priceOf(it);render()}
+  catch{$("#pricesAt").textContent="Brak pliku z cenami — skaner działa bez cen."}}
+function priceOf(it){if(!PR||it.t!=="card"||it.state!=="ok")return null;const L=PR.g[it.game];if(!L)return null;
+  let c=L.filter(x=>x[5]===nrm(it.name+" "+(it.version||"")));if(!c.length&&it.version)c=L.filter(x=>x[5]===nrm(it.name+" "+it.version.replace(/^.*?[-–—,]\s*/,"")));
+  if(!c.length&&!it.version)c=L.filter(x=>x[5]===nrm(it.name));if(!c.length)return null;
+  const ex=expIds(it);if(ex.length){const f=c.filter(x=>ex.includes(x[1]));if(f.length)c=f}
+  const vals=c.map(x=>it.foil===true?(x[3]??x[2]):x[2]).filter(v=>v!=null).sort((a,b)=>a-b);if(!vals.length)return null;
+  const sp=(SPECIAL[it.game]||/^$/).test(it.rarity||"");return{v:sp?vals[vals.length-1]:vals[0],amb:new Set(vals).size>1}}
+const eur=v=>v.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+
+/* ---------- sesja (zapisywana w telefonie, żeby nic nie zginęło) ---------- */
+const S={items:[],seq:Date.now()};
+let idb=null;
+function db(){return idb||(idb=new Promise((res,rej)=>{const o=indexedDB.open("skaner",1);o.onupgradeneeded=()=>o.result.createObjectStore("kv");o.onsuccess=()=>res(o.result);o.onerror=()=>rej(o.error)}))}
+async function kv(k,v){const d=await db();return new Promise((res,rej)=>{const tx=d.transaction("kv",v===undefined?"readonly":"readwrite"),st=tx.objectStore("kv");const r=v===undefined?st.get(k):st.put(v,k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+let saveT=0;
+function persist(){clearTimeout(saveT);saveT=setTimeout(()=>kv("items",S.items.map(({blob,...x})=>x)).catch(()=>{}),400)}
+
+/* ---------- kamera na żywo ---------- */
+const C={on:false,stream:null,timer:0,prev:null,stable:0,last:null,busy:false,lock:null,torch:false,ac:null};
+const AW=40,AH=56;
+const V=()=>$("#video");
+function guideRect(v){const vw=v.videoWidth,vh=v.videoHeight;let h=vh*.84,w=h*5/7;if(w>vw*.84){w=vw*.84;h=w*7/5}return{x:(vw-w)/2,y:(vh-h)/2,w,h}}
+function placeGuide(){const v=V(),gd=$("#guide");if(!C.on||!v.videoWidth){gd.hidden=true;return}
+  const W=v.clientWidth,H=v.clientHeight,s=Math.min(W/v.videoWidth,H/v.videoHeight),ox=(W-v.videoWidth*s)/2,oy=(H-v.videoHeight*s)/2,g=guideRect(v);
+  Object.assign(gd.style,{left:ox+g.x*s+"px",top:oy+g.y*s+"px",width:g.w*s+"px",height:g.h*s+"px"});gd.hidden=false}
+function sig(){const v=V();if(!v.videoWidth)return null;const g=guideRect(v);const c=C.ac||(C.ac=document.createElement("canvas"));c.width=AW;c.height=AH;
+  const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(v,g.x,g.y,g.w,g.h,0,0,AW,AH);const d=x.getImageData(0,0,AW,AH).data,o=new Float32Array(AW*AH);
+  for(let i=0;i<o.length;i++)o[i]=d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114;return o}
+const diff=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=Math.abs(a[i]-b[i]);return s/a.length};
+const std=a=>{let m=0;for(const v of a)m+=v;m/=a.length;let s=0;for(const v of a)s+=(v-m)*(v-m);return Math.sqrt(s/a.length)};
+function hint(t,cls){$("#hint").textContent=t||"";$("#guide").className="guide"+(cls?" "+cls:"")}
+
+async function startCam(){$("#offmsg").classList.remove("err");
+  if(!navigator.mediaDevices?.getUserMedia){offMsg("Ta przeglądarka nie daje dostępu do aparatu. Otwórz skaner w Chrome.",true);return}
+  try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440}},audio:false});
+    C.stream=st;const v=V();v.onloadedmetadata=placeGuide;v.srcObject=st;await v.play().catch(()=>{});
+    C.on=true;C.prev=null;C.stable=0;C.last=null;$("#off").hidden=true;$("#tools").hidden=false;hint("Połóż kartę w ramce");
+    const tr=st.getVideoTracks()[0];let caps={};try{caps=tr.getCapabilities?.()||{}}catch{}$("#torch").hidden=!caps.torch;C.torch=false;
+    try{C.lock=await navigator.wakeLock?.request("screen")}catch{}
+    clearInterval(C.timer);C.timer=setInterval(tick,300)}
+  catch(e){const n=e?.name;offMsg(n==="NotAllowedError"?"Brak zgody na aparat. Stuknij kłódkę obok adresu strony, zezwól na Aparat i spróbuj jeszcze raz.":n==="NotFoundError"?"Nie znalazłem aparatu.":"Nie mogę włączyć kamery ("+(n||"błąd")+").",true)}}
+function offMsg(t,bad){const p=$("#offmsg");p.textContent=t;p.classList.toggle("err",!!bad);$("#off").hidden=false}
+function stopCam(){clearInterval(C.timer);C.timer=0;C.stream?.getTracks().forEach(t=>t.stop());C.stream=null;C.on=false;V().srcObject=null;
+  try{C.lock?.release()}catch{}C.lock=null;$("#tools").hidden=true;$("#guide").hidden=true;hint("");offMsg("Kamera wyłączona.")}
+function tick(){if(!C.on||C.busy||document.hidden)return;const g=sig();if(!g)return;placeGuide();
+  if(C.prev)C.stable=diff(g,C.prev)<4?C.stable+1:0;C.prev=g;
+  const novel=!C.last||diff(g,C.last)>14;
+  if(std(g)<12){hint("Połóż kartę w ramce");return}
+  if(!novel){hint("Gotowe — połóż następną kartę","go");return}
+  if(C.stable<3){hint("Trzymaj nieruchomo…","hold");return}
+  C.last=g;capture()}
+function shoot(){if(!C.on||C.busy)return;C.last=sig();capture()}
+async function capture(){const v=V();if(!v.videoWidth)return;C.busy=true;
+  try{const g=guideRect(v),m=.06;const x=Math.max(0,g.x-g.w*m),y=Math.max(0,g.y-g.h*m),w=Math.min(v.videoWidth-x,g.w*(1+2*m)),h=Math.min(v.videoHeight-y,g.h*(1+2*m));
+    const big=await grab(v,x,y,w,h,1300,.86);const thumb=await grab(v,x,y,w,h,520,.8);
+    const fl=$("#flash");fl.classList.add("go");requestAnimationFrame(()=>requestAnimationFrame(()=>fl.classList.remove("go")));try{navigator.vibrate?.(35)}catch{}
+    const it={id:"i"+(++S.seq),t:hasKey()?"card":"shot",state:hasKey()?"recog":"ok",qty:1,img:await toData(thumb),at:Date.now()};
+    if(hasKey())it.blob=big;else it.shot=await toData(big);
+    S.items.unshift(it);it.fresh=true;render();persist();
+    if(hasKey()){hint("Rozpoznaję… możesz kłaść następną","go");recognize(it)}else hint("Zapisano zdjęcie — połóż następną kartę","go")}
+  catch(e){toast("Nie udało się zrobić zdjęcia")}
+  finally{C.busy=false}}
+function grab(v,x,y,w,h,max,q){const s=Math.min(1,max/Math.max(w,h));const c=document.createElement("canvas");c.width=Math.round(w*s);c.height=Math.round(h*s);
+  c.getContext("2d").drawImage(v,x,y,w,h,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,"image/jpeg",q))}
+const toData=b=>new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(b)});
+async function toggleTorch(){const tr=C.stream?.getVideoTracks()[0];if(!tr)return;C.torch=!C.torch;try{await tr.applyConstraints({advanced:[{torch:C.torch}]})}catch{C.torch=false}$("#torch").textContent=C.torch?"Latarka: wł.":"Latarka"}
+
+/* ---------- rozpoznawanie przez API Anthropic (tylko z kluczem) ---------- */
+const PROMPT=()=>`Na zdjęciu jest jedna karta kolekcjonerska${OPT.game!=="auto"?` z gry ${GAMES[OPT.game]}`:" z gry Disney Lorcana, Riftbound (League of Legends TCG) albo Cyberpunk TCG"}. Odczytaj ją dokładnie.
+Lorcana: duża nazwa postaci to "name", mniejszy podtytuł to "version"; na dole po lewej numer np. "42/204 · EN · 1" — "number" to 42, "total" 204, ostatnia liczba to numer dodatku (1–14), podaj ją w "set"; karty Enchanted mają grafikę bez ramki i są zawsze foliowe. Rzadkość: Common, Uncommon, Rare, Super Rare, Legendary, Epic, Enchanted, Iconic albo Promo.
+Riftbound: nazwa i ewentualny podtytuł (np. "Jinx" i "Loose Cannon"), kod dodatku i numer np. "OGN-123/298" — kod (OGN, SFD, UNL, VEN, RAD) podaj w "set". Rzadkość: Common, Uncommon, Rare, Epic, Showcase albo Promo.
+Cyberpunk TCG: "name" to nazwa, podtytuł po myślniku to "version", trzycyfrowy numer (np. "060" albo "005a") w "number", dodatek Welcome to Night City jako "WTNC". Rzadkość: Common, Uncommon, Rare, Epic, Secret, Iconic, Nova albo Promo.
+"foil": true tylko gdy widać tęczowy połysk folii, false gdy karta jest wyraźnie zwykła, null gdy nie da się tego pewnie ocenić.
+Jeśli na zdjęciu nie ma czytelnej karty, odpowiedz {"card":null}.
+Odpowiedz tylko JSON: {"card":{"game":"lorcana"|"riftbound"|"cyberpunk","name":string,"version":string|null,"set":string|null,"number":string|null,"total":string|null,"foil":true|false|null,"language":"EN"|"DE"|"FR"|"IT"|"JA"|"ZH"|null,"rarity":string|null,"type":string|null,"confidence":number}}`;
+async function callApi(blob){const b64=(await toData(blob)).split(",")[1];
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":OPT.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:OPT.model,max_tokens:400,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:PROMPT()}]}]})});
+  if(!r.ok){let m="";try{m=(await r.json())?.error?.message||""}catch{}throw{status:r.status,msg:m}}
+  const j=await r.json();const txt=(j.content||[]).map(c=>c.text||"").join("");const m=txt.match(/\{[\s\S]*\}/);if(!m)throw{status:0,msg:"bad"};return JSON.parse(m[0])}
+const clip=(v,n=80)=>v==null?null:String(v).slice(0,n);
+async function recognize(it){let j=null,err=null;
+  for(let a=0;a<2&&!j;a++){try{j=await callApi(it.blob)}catch(e){err=e;if(e?.status===401||e?.status===403||e?.status===400)break;await new Promise(r=>setTimeout(r,2500))}}
+  const cur=S.items.find(x=>x.id===it.id);if(!cur)return;
+  const c=j?.card;
+  if(!j){if(err?.status===401||err?.status===403)toast("Klucz API nie działa — sprawdź go w ustawieniach. Zdjęcie rozpozna Klaser.");else toast("Nie połączyłem się z Claude — zdjęcie rozpozna Klaser.");return asShot(cur)}
+  if(!c||!c.name||(typeof c.confidence==="number"&&c.confidence<.45)||!GAMES[c.game]){toast("Nie rozpoznałem karty — zdjęcie zostaje dla Klasera.");return asShot(cur)}
+  Object.assign(cur,{state:"ok",game:c.game,name:clip(c.name),version:clip(c.version)||"",set:clip(c.set,12)||"",number:c.number!=null?clip(c.total&&!String(c.number).includes("/")?c.number+"/"+c.total:c.number,20):"",
+    foil:c.foil===true?true:c.foil===false?false:(c.game==="lorcana"&&/enchanted/i.test(c.rarity||"")?true:null),language:clip(c.language,3),rarity:clip(c.rarity,30),type:clip(c.type,30)});
+  cur.shot=await toData(cur.blob).catch(()=>null);delete cur.blob;cur.price=priceOf(cur);
+  if(cur.foil!==null)merge(cur);else try{navigator.vibrate?.([30,60,30])}catch{}
+  render();persist()}
+async function asShot(it){it.t="shot";it.state="ok";if(it.blob){it.shot=await toData(it.blob);delete it.blob}render();persist()}
+const keyOf=it=>[it.game,nrm(it.name),nrm(it.version),String(it.number||"").split("/")[0].replace(/^0+/,""),it.foil?"F":"N"].join("|");
+function merge(it){const k=keyOf(it);const o=S.items.find(x=>x!==it&&x.t==="card"&&x.state==="ok"&&x.foil!==null&&keyOf(x)===k);
+  if(!o){toast(`${it.name}${it.price?" · "+eur(it.price.v):""}`);return}
+  o.qty+=it.qty;S.items=S.items.filter(x=>x!==it);S.items=[o,...S.items.filter(x=>x!==o)];o.fresh=true;toast(`${o.name} — masz ×${o.qty} w tej sesji`)}
+
+/* ---------- lista ---------- */
+function render(){const L=$("#list");const its=S.items;
+  if(!its.length)L.innerHTML=`<p class="empty">Zeskanowane karty pojawią się tutaj.</p>`;
+  else L.innerHTML=its.slice(0,200).map(it=>{
+    const th=`<div class="th">${it.img?`<img src="${esc(it.img)}" alt="">`:""}</div>`;
+    let mid;
+    if(it.state==="recog")mid=`<div class="nm"><span class="spin"></span> Rozpoznaję…</div>`;
+    else if(it.t==="shot")mid=`<div class="nm">Zdjęcie karty</div><div class="meta">Rozpozna ją Klaser po imporcie</div>`;
+    else{const meta=[GAMES[it.game],it.set&&("dodatek "+it.set),it.number&&("#"+it.number),it.foil===true?"Foil":it.foil===false?"":"folia?"].filter(Boolean).join(" · ");
+      mid=`<div class="nm">${esc(it.name)}${it.version?` <span>${esc(it.version)}</span>`:""}</div><div class="meta">${esc(meta)}</div>`+
+        (it.price?`<div class="price">${it.price.amb?"≈ ":""}${esc(eur(it.price.v))}${it.qty>1?` <span class="meta">× ${it.qty}</span>`:""}</div>`:"")+
+        (it.foil===null?`<div class="ask"><button data-foil="0" data-id="${it.id}">Zwykła</button><button class="primary" data-foil="1" data-id="${it.id}">Foil</button></div>`:"")}
+    const qty=it.state==="recog"?"":`<div class="qty"><button data-dec="${it.id}" aria-label="Mniej">${it.qty>1?"−":"✕"}</button><b>${it.qty}</b><button data-inc="${it.id}" aria-label="Więcej">+</button></div>`;
+    return`<div class="row${it.fresh?" new":""}">${th}<div style="min-width:0">${mid}</div>${qty}</div>`}).join("");
+  its.forEach(i=>delete i.fresh);
+  const n=its.reduce((a,i)=>a+i.qty,0),val=its.reduce((a,i)=>a+(i.price?.v||0)*i.qty,0),pend=its.some(i=>i.state==="recog");
+  $("#sumL").textContent=n?`W tej sesji: ${n} ${pl(n,"karta","karty","kart")}`:"Sesja jest pusta";
+  $("#sumV").textContent=val?"≈ "+eur(val):"";
+  const sb=$("#send");sb.disabled=!n||pend;sb.textContent=pend?"Czekam na rozpoznanie…":n?`Wyślij do Klasera (${n})`:"Wyślij do Klasera";
+  $("#mode").textContent=hasKey()?"Rozpoznaje na żywo":"Tryb zdjęć";$("#mode").classList.toggle("on",hasKey())}
+$("#list").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  const id=b.dataset.inc||b.dataset.dec||b.dataset.id;const it=S.items.find(x=>x.id===id);if(!it)return;
+  if(b.dataset.inc)it.qty++;
+  else if(b.dataset.dec){if(it.qty>1)it.qty--;else{S.items=S.items.filter(x=>x!==it);toast("Usunięto z sesji")}}
+  else if(b.dataset.foil){it.foil=b.dataset.foil==="1";it.price=priceOf(it);merge(it)}
+  render();persist()});
+
+/* ---------- wysyłka do Klasera (plik JSON) ---------- */
+let lastFile=null;
+function exportSession(){const its=S.items.filter(i=>i.state==="ok");
+  const cards=its.filter(i=>i.t==="card").map(i=>({game:i.game,name:i.name,version:i.version||null,set:i.set||null,number:i.number||null,foil:i.foil,language:i.language||null,rarity:i.rarity||null,type:i.type||null,qty:i.qty,img:i.img||null}));
+  const shots=[];for(const i of its.filter(i=>i.t==="shot"))for(let q=0;q<i.qty;q++)shots.push(i.shot||i.img);
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  const name=`klaser-skan-${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+  lastFile={name,blob:new Blob([JSON.stringify({app:"skaner-klasera",v:1,at:d.toISOString(),cards,shots})],{type:"application/json"})};
+  download();const n=its.reduce((a,i)=>a+i.qty,0);
+  $("#sentMsg").textContent=`Zapisałem do pliku ${n} ${pl(n,"kartę","karty","kart")}${shots.length?`, w tym ${shots.length} ${pl(shots.length,"zdjęcie","zdjęcia","zdjęć")} do rozpoznania w Klaserze`:""}.`;
+  $("#sentFile").textContent=name;$("#openK").href=/^https:\/\/claude\.ai\//.test(OPT.klaser)?OPT.klaser:KLASER_DOMYSLNY;$("#dSent").showModal()}
+function download(){if(!lastFile)return;const u=URL.createObjectURL(lastFile.blob);const a=document.createElement("a");a.href=u;a.download=lastFile.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000)}
+function clearSession(){S.items=[];render();persist();C.last=null}
+
+/* ---------- przyciski ---------- */
+$("#start").onclick=startCam;$("#stop").onclick=stopCam;$("#now").onclick=shoot;$("#torch").onclick=toggleTorch;
+$("#send").onclick=exportSession;$("#again").onclick=download;
+$("#done").onclick=()=>{clearSession();$("#dSent").close();toast("Nowa sesja")};
+$("#clear").onclick=()=>{if(!S.items.length)return;if(confirm("Wyczyścić bieżącą sesję? Karty, których nie wysłałeś do Klasera, znikną."))clearSession()};
+$("#opt").onclick=()=>{$("#key").value=OPT.key;$("#model").value=OPT.model;$("#game").value=OPT.game;$("#klaser").value=OPT.klaser;$("#keyMsg").textContent="";$("#dOpt").showModal()};
+$("#save").onclick=()=>{OPT.key=$("#key").value.trim();OPT.model=$("#model").value;OPT.game=$("#game").value;OPT.klaser=$("#klaser").value.trim()||KLASER_DOMYSLNY;saveOpt();$("#dOpt").close();render();
+  toast(hasKey()?"Zapisano — skaner rozpoznaje karty na żywo":OPT.key?"To nie wygląda na klucz Anthropic (zaczyna się od sk-ant-)":"Zapisano — tryb zdjęć")};
+$("#test").onclick=async()=>{const m=$("#keyMsg"),k=$("#key").value.trim();m.className="";m.textContent="Sprawdzam…";
+  try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":k,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:$("#model").value,max_tokens:5,messages:[{role:"user",content:"OK"}]})});
+    if(r.ok){m.textContent="Klucz działa.";return}let t="";try{t=(await r.json())?.error?.message||""}catch{}
+    m.className="err";m.textContent=r.status===401?"Klucz jest nieprawidłowy.":r.status===400&&/credit/i.test(t)?"Na koncie API brakuje środków — doładuj je w konsoli Anthropic.":"Błąd "+r.status+(t?": "+t:"")}
+  catch{m.className="err";m.textContent="Brak połączenia z API Anthropic."}};
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&C.on){C.resume=true;stopCam()}else if(!document.hidden&&C.resume){C.resume=false;startCam()}});
+addEventListener("resize",placeGuide);
+
+/* ---------- start ---------- */
+(async()=>{try{const it=await kv("items");if(Array.isArray(it))S.items=it.map(i=>i.state==="recog"?{...i,t:"shot",state:"ok",shot:i.shot||i.img}:i)}catch{}
+  render();loadPrices();
+  try{const p=await navigator.permissions?.query({name:"camera"});if(p?.state==="granted")startCam()}catch{}})();
+</script>
+</body>
+</html>
