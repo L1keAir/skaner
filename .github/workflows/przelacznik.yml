@@ -1,0 +1,40 @@
+name: Przełącznik widoczności
+# Uruchamiany ręcznie (albo przez Claude): "publiczny" włącza skaner, "prywatny" go chowa.
+# Korzysta z sekretu PRZELACZNIK (klucz z uprawnieniami Administration, Pages i Actions dla tego repozytorium).
+on:
+  workflow_dispatch:
+    inputs:
+      tryb:
+        description: "Widoczność repozytorium"
+        required: true
+        type: choice
+        options: [publiczny, prywatny]
+permissions:
+  contents: read
+concurrency:
+  group: przelacznik
+jobs:
+  przelacz:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PRZELACZNIK }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Sprawdź klucz
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::error::Brak sekretu PRZELACZNIK"; exit 1; fi
+      - name: Schowaj skaner
+        if: inputs.tryb == 'prywatny'
+        run: |
+          gh workflow disable strona.yml -R "$REPO" || true
+          gh api -X PATCH "repos/$REPO" -f visibility=private --jq '"Widoczność: " + .visibility'
+      - name: Włącz skaner
+        if: inputs.tryb == 'publiczny'
+        run: |
+          gh api -X PATCH "repos/$REPO" -f visibility=public --jq '"Widoczność: " + .visibility'
+          sleep 5
+          gh api -X POST "repos/$REPO/pages" -f build_type=workflow 2>/dev/null \
+            || gh api -X PUT "repos/$REPO/pages" -f build_type=workflow
+          gh workflow enable strona.yml -R "$REPO"
+          gh workflow run strona.yml -R "$REPO" --ref main
+          echo "Publikacja strony uruchomiona — skaner będzie działał za 1–2 minuty."
