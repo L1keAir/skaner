@@ -205,7 +205,7 @@ async function startCam(){$("#offmsg").classList.remove("err");
     const tr=st.getVideoTracks()[0];let caps={};try{caps=tr.getCapabilities?.()||{}}catch{}$("#torch").hidden=!caps.torch;C.torch=false;
     try{C.lock=await navigator.wakeLock?.request("screen")}catch{}
     clearInterval(C.timer);C.timer=setInterval(tick,300)}
-  catch(e){const n=e?.name;offMsg(n==="NotAllowedError"?"Brak zgody na aparat. Stuknij kłódkę obok adresu strony, zezwól na Aparat i spróbuj jeszcze raz.":n==="NotFoundError"?"Nie znalazłem aparatu.":"Nie mogę włączyć kamery ("+(n||"błąd")+").",true)}}
+  catch(e){const n=e?.name;offMsg(n==="NotAllowedError"?"Brak zgody na aparat. Sprawdź: Chrome ⋮ → Ustawienia → Ustawienia witryn → Aparat (musi być włączone) oraz Ustawienia telefonu → Aplikacje → Chrome → Uprawnienia → Aparat. Potem stuknij „Włącz kamerę”.":n==="NotFoundError"?"Nie znalazłem aparatu.":"Nie mogę włączyć kamery ("+(n||"błąd")+").",true)}}
 function offMsg(t,bad){const p=$("#offmsg");p.textContent=t;p.classList.toggle("err",!!bad);$("#off").hidden=false}
 function stopCam(){clearInterval(C.timer);C.timer=0;C.stream?.getTracks().forEach(t=>t.stop());C.stream=null;C.on=false;V().srcObject=null;
   try{C.lock?.release()}catch{}C.lock=null;$("#tools").hidden=true;$("#guide").hidden=true;hint("");offMsg("Kamera wyłączona.")}
