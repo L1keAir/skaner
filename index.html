@@ -201,7 +201,7 @@ async function startCam(){$("#offmsg").classList.remove("err");
   if(!navigator.mediaDevices?.getUserMedia){offMsg("Ta przeglądarka nie daje dostępu do aparatu. Otwórz skaner w Chrome.",true);return}
   try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440}},audio:false});
     C.stream=st;const v=V();v.onloadedmetadata=placeGuide;v.srcObject=st;await v.play().catch(()=>{});
-    C.on=true;C.prev=null;C.stable=0;C.last=null;$("#off").hidden=true;$("#tools").hidden=false;hint("Połóż kartę w ramce");
+    C.on=true;C.prev=null;C.stable=0;C.last=null;C.bg=null;C.scene=null;$("#off").hidden=true;$("#tools").hidden=false;hint("Pokaż pusty blat — za chwilę połóż kartę");
     const tr=st.getVideoTracks()[0];let caps={};try{caps=tr.getCapabilities?.()||{}}catch{}$("#torch").hidden=!caps.torch;C.torch=false;
     try{C.lock=await navigator.wakeLock?.request("screen")}catch{}
     clearInterval(C.timer);C.timer=setInterval(tick,300)}
@@ -209,14 +209,22 @@ async function startCam(){$("#offmsg").classList.remove("err");
 function offMsg(t,bad){const p=$("#offmsg");p.textContent=t;p.classList.toggle("err",!!bad);$("#off").hidden=false}
 function stopCam(){clearInterval(C.timer);C.timer=0;C.stream?.getTracks().forEach(t=>t.stop());C.stream=null;C.on=false;V().srcObject=null;
   try{C.lock?.release()}catch{}C.lock=null;$("#tools").hidden=true;$("#guide").hidden=true;hint("");offMsg("Kamera wyłączona.")}
+/* Wykrywanie karty: skaner zapamiętuje pusty blat (tło). Zdjęcie robi dopiero wtedy, gdy obraz w ramce
+   uspokoi się na ok. 1,2 s i większość ramki różni się od tła — czyli leży w niej coś nowego, a ręka już zniknęła. */
+const STILL=4;
+function covered(a,b){let n=0,t=0;for(let by=0;by<AH;by+=8)for(let bx=0;bx<AW;bx+=8){let s=0,k=0;
+    for(let y=by;y<Math.min(by+8,AH);y++)for(let x=bx;x<Math.min(bx+8,AW);x++){s+=Math.abs(a[y*AW+x]-b[y*AW+x]);k++}t++;if(s/k>18)n++}
+  return n/t}
 function tick(){if(!C.on||C.busy||document.hidden)return;const g=sig();if(!g)return;placeGuide();
   if(C.prev)C.stable=diff(g,C.prev)<4?C.stable+1:0;C.prev=g;
-  const novel=!C.last||diff(g,C.last)>14;
-  if(std(g)<12){hint("Połóż kartę w ramce");return}
-  if(!novel){hint("Gotowe — połóż następną kartę","go");return}
-  if(C.stable<3){hint("Trzymaj nieruchomo…","hold");return}
+  if(C.stable<STILL){if(C.scene&&diff(g,C.scene)>8)hint(C.bg?"Trzymaj nieruchomo…":"Sprawdzam tło…","hold");return}
+  if(C.scene&&diff(g,C.scene)<6)return;
+  C.scene=g;
+  if(!C.bg||std(g)<10&&!C.last){C.bg=g;hint("Połóż kartę w ramce");return}
+  if(covered(g,C.bg)<.35){C.bg=g;hint(C.last?"Gotowe — połóż następną kartę":"Połóż kartę w ramce",C.last?"go":"");return}
+  if(C.last&&diff(g,C.last)<14){hint("Gotowe — zabierz kartę i połóż następną","go");return}
   C.last=g;capture()}
-function shoot(){if(!C.on||C.busy)return;C.last=sig();capture()}
+function shoot(){if(!C.on||C.busy)return;const g=sig();C.last=g;C.scene=g;capture()}
 async function capture(){const v=V();if(!v.videoWidth)return;C.busy=true;
   try{const g=guideRect(v),m=.06;const x=Math.max(0,g.x-g.w*m),y=Math.max(0,g.y-g.h*m),w=Math.min(v.videoWidth-x,g.w*(1+2*m)),h=Math.min(v.videoHeight-y,g.h*(1+2*m));
     const big=await grab(v,x,y,w,h,1300,.86);const thumb=await grab(v,x,y,w,h,520,.8);
@@ -251,7 +259,8 @@ async function recognize(it){let j=null,err=null;
   const cur=S.items.find(x=>x.id===it.id);if(!cur)return;
   const c=j?.card;
   if(!j){if(err?.status===401||err?.status===403)toast("Klucz API nie działa — sprawdź go w ustawieniach. Zdjęcie rozpozna Klaser.");else toast("Nie połączyłem się z Claude — zdjęcie rozpozna Klaser.");return asShot(cur)}
-  if(!c||!c.name||(typeof c.confidence==="number"&&c.confidence<.45)||!GAMES[c.game]){toast("Nie rozpoznałem karty — zdjęcie zostaje dla Klasera.");return asShot(cur)}
+  if(!c){S.items=S.items.filter(x=>x!==cur);toast("Na zdjęciu nie było karty — pominąłem");render();persist();return}
+  if(!c.name||(typeof c.confidence==="number"&&c.confidence<.45)||!GAMES[c.game]){toast("Nie rozpoznałem karty — zdjęcie zostaje dla Klasera.");return asShot(cur)}
   Object.assign(cur,{state:"ok",game:c.game,name:clip(c.name),version:clip(c.version)||"",set:clip(c.set,12)||"",number:c.number!=null?clip(c.total&&!String(c.number).includes("/")?c.number+"/"+c.total:c.number,20):"",
     foil:c.foil===true?true:c.foil===false?false:(c.game==="lorcana"&&/enchanted/i.test(c.rarity||"")?true:null),language:clip(c.language,3),rarity:clip(c.rarity,30),type:clip(c.type,30)});
   cur.shot=await toData(cur.blob).catch(()=>null);delete cur.blob;cur.price=priceOf(cur);
